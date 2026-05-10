@@ -98,7 +98,6 @@ export default async function LandingPage() {
             </nav>
           </div>
         </footer>
-      </section>
     </main>
   );
 }
