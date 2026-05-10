@@ -6,18 +6,19 @@ const TARGET_HOST = "dearmate.mom";
 export function middleware(request: NextRequest) {
   if (request.nextUrl.hostname !== TARGET_HOST && request.nextUrl.pathname.startsWith("/api/auth")) {
     const url = request.nextUrl.clone();
-    url.hostname = TARGET_HOST;
+    url.host = TARGET_HOST;
     url.port = "";
 
     const requestHeaders = new Headers(request.headers);
     requestHeaders.set("x-forwarded-host", TARGET_HOST);
     requestHeaders.set("host", TARGET_HOST);
 
-    return NextResponse.rewrite(url, {
-      request: {
-        headers: requestHeaders,
-      },
+    const response = NextResponse.rewrite(url, {
+      request: { headers: requestHeaders },
     });
+
+    response.headers.set("x-rewritten-host", TARGET_HOST);
+    return response;
   }
 }
 
