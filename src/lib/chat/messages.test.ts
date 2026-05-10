@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { splitAssistantTextMessages, toAudioMessage, toSelfieImageMessage } from "./messages";
+import {
+  splitAssistantTextMessages,
+  toAudioMessage,
+  toSelfieImageMessage,
+  toUserAudioMessage,
+  toUserImageMessage,
+} from "./messages";
 
 describe("chat message helpers", () => {
   it("splits assistant text on NEW_MSG boundaries", () => {
@@ -37,6 +43,36 @@ describe("chat message helpers", () => {
       audioUrl: "data:audio/mpeg;base64,AAAA",
       caption: "我想你了。",
       content: "我想你了。",
+    });
+  });
+
+  it("builds a user image message from an uploaded picture", () => {
+    expect(
+      toUserImageMessage({
+        imageUrl: "data:image/png;base64,AAAA",
+        caption: "衣服搭配",
+      }),
+    ).toEqual({
+      role: "user",
+      type: "image",
+      imageUrl: "data:image/png;base64,AAAA",
+      caption: "衣服搭配",
+      content: "衣服搭配",
+    });
+  });
+
+  it("builds a user audio message from a recorded voice clip", () => {
+    expect(
+      toUserAudioMessage({
+        audioUrl: "data:audio/webm;base64,AAAA",
+        caption: "语音消息",
+      }),
+    ).toEqual({
+      role: "user",
+      type: "audio",
+      audioUrl: "data:audio/webm;base64,AAAA",
+      caption: "语音消息",
+      content: "语音消息",
     });
   });
 });

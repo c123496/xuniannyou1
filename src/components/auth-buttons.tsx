@@ -9,13 +9,13 @@ export function GoogleSignInButton({ isConfigured }: GoogleSignInButtonProps) {
     return (
       <div className="flex flex-col gap-2">
         <button
-          className="inline-flex h-12 cursor-not-allowed items-center justify-center rounded-full bg-stone-300 px-6 text-sm font-semibold text-stone-500"
+          className="inline-flex h-12 cursor-not-allowed items-center justify-center rounded-full bg-[#C8553D]/30 px-7 text-sm font-semibold text-[#8C6E64]"
           disabled
           type="button"
         >
-          Continue with Google
+          使用 Google 登录
         </button>
-        <p className="max-w-sm text-sm leading-6 text-amber-700">
+        <p className="max-w-sm text-sm leading-6 text-[#8C6E64]">
           先在 .env.local 填入 Google OAuth 的 ID 和 Secret，登录按钮才会启用。
         </p>
       </div>
@@ -30,10 +30,10 @@ export function GoogleSignInButton({ isConfigured }: GoogleSignInButtonProps) {
       }}
     >
       <button
-        className="inline-flex h-12 items-center justify-center rounded-full bg-stone-950 px-6 text-sm font-semibold text-white transition hover:bg-stone-800"
+        className="inline-flex h-12 items-center justify-center rounded-full bg-[#C8553D] px-7 text-sm font-semibold text-white shadow-[0_16px_36px_rgba(200,85,61,0.28)] transition hover:bg-[#B94C37]"
         type="submit"
       >
-        Continue with Google
+        进入我的纸片人关系
       </button>
     </form>
   );
@@ -48,10 +48,10 @@ export function SignOutButton() {
       }}
     >
       <button
-        className="inline-flex h-10 items-center justify-center rounded-full border border-stone-300 bg-white/70 px-4 text-sm font-medium text-stone-700 transition hover:border-stone-950 hover:text-stone-950"
+        className="inline-flex h-10 items-center justify-center rounded-full border border-[#C8553D]/20 bg-white/60 px-4 text-sm font-medium text-[#5F463E] shadow-sm transition hover:border-[#C8553D]/45 hover:text-[#C8553D]"
         type="submit"
       >
-        Sign out
+        退出
       </button>
     </form>
   );

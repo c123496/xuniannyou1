@@ -74,6 +74,42 @@ export function toAudioMessage({
   };
 }
 
+export function toUserImageMessage({
+  imageUrl,
+  caption,
+}: {
+  imageUrl: string;
+  caption?: string;
+}): ChatMessageDraft {
+  const content = caption?.trim() || "图片消息";
+
+  return {
+    role: "user",
+    type: "image",
+    imageUrl,
+    caption: content,
+    content,
+  };
+}
+
+export function toUserAudioMessage({
+  audioUrl,
+  caption,
+}: {
+  audioUrl: string;
+  caption?: string;
+}): ChatMessageDraft {
+  const content = caption?.trim() || "语音消息";
+
+  return {
+    role: "user",
+    type: "audio",
+    audioUrl,
+    caption: content,
+    content,
+  };
+}
+
 export function withClientIds(messages: ChatMessageDraft[]): ChatMessage[] {
   return messages.map((message) => ({
     ...message,

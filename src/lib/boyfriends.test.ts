@@ -20,8 +20,8 @@ describe("boyfriend seed data", () => {
     for (const boyfriend of boyfriends) {
       expect(boyfriend.themeColor).toMatch(/^#[0-9A-F]{6}$/);
       expect(boyfriend.openingQuote.length).toBeGreaterThan(5);
-      expect(boyfriend.cardImageUrl).toMatch(/^https:\/\//);
-      expect(boyfriend.avatarImageUrl).toMatch(/^https:\/\//);
+      expect(boyfriend.cardImageUrl).toMatch(/^\/characters\/.+\.png$/);
+      expect(boyfriend.avatarImageUrl).toMatch(/^\/characters\/.+\.png$/);
     }
   });
 

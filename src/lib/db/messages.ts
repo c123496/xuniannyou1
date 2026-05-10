@@ -1,18 +1,5 @@
-import { Pool } from "pg";
-
 import type { ChatMessageDraft } from "../chat/messages";
-
-let pool: Pool | undefined;
-
-function getPool() {
-  if (!process.env.DATABASE_URL) return undefined;
-
-  pool ??= new Pool({
-    connectionString: process.env.DATABASE_URL,
-  });
-
-  return pool;
-}
+import { getPool } from "./pool";
 
 export async function saveChatMessages({
   userId,

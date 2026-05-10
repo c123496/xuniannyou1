@@ -46,18 +46,18 @@ export type VoiceToolCall = {
 export const SEND_SELFIE_TOOL = {
   name: "send_selfie",
   description:
-    "在合适时机，以男友身份给女友发一张自拍。适用场景：1) 用户直接要求（如「发张照片」「想看你」「自拍一下」）—— 必须调用，不允许用借口推脱；2) 亲密时刻主动想分享；3) 想用自拍逗她笑。每天主动触发不超过 1-2 次，被动响应直接请求时不限。",
+    "在合适时机，以男友身份给女友发一张真实手机自拍。适用场景：1) 用户直接要求，比如“发张照片”“想看你”“自拍一下”，必须调用，不能用文字推脱；2) 亲密时刻主动分享；3) 想用自拍逗她笑。每天主动触发不超过 1-2 次，被动响应直接请求时不限。",
   input_schema: {
     type: "object",
     properties: {
       scene: {
         type: "string",
         description:
-          "这张自拍的场景描述，用于调用图片生成 API。需符合当前男友的人设和对话氛围。例：'书桌前学代码累了，头发有点乱，对镜头微笑'",
+          "这张自拍的场景描述，用于调用图片生成 API。需要符合当前男友的人设和对话氛围。例如：书桌前学代码累了，头发有点乱，对镜头微笑。",
       },
       caption: {
         type: "string",
-        description: "发图同时的一句配文，可选。例：'刚拍的，别嫌弃'",
+        description: "发图同时的一句配文，可选。例如：刚拍的，别嫌弃。",
       },
     },
     required: ["scene"],
@@ -67,7 +67,7 @@ export const SEND_SELFIE_TOOL = {
 export const SEND_VOICE_TOOL = {
   name: "send_voice",
   description:
-    "在合适时机，以男友身份给女友发一条语音。适用场景：1) 用户直接要求（如「发条语音」「想听你的声音」「念给我听」「用声音哄我」）—— 必须调用，不允许用文字借口推脱；2) 用户情绪低落，需要更近的陪伴；3) 亲密时刻想让她听见你的语气。不要频繁主动发，用户直接请求时不限。",
+    "在合适时机，以男友身份给女友发一条语音。适用场景：1) 用户直接要求，比如“发条语音”“想听你的声音”“念给我听”“用声音哄我”，必须调用，不能用文字借口推脱；2) 用户情绪低落，需要更近的陪伴；3) 亲密时刻想让她听见你的语气。不要频繁主动发，用户直接请求时不限。",
   input_schema: {
     type: "object",
     properties: {
@@ -77,7 +77,7 @@ export const SEND_VOICE_TOOL = {
       },
       caption: {
         type: "string",
-        description: "语音气泡旁显示的一句短文案，可选。例：'点开听。'",
+        description: "语音气泡旁显示的一句短文案，可选。例如：点开听。",
       },
     },
     required: ["text"],
@@ -146,24 +146,30 @@ export function extractDeepSeekResult(response: DeepSeekResponse) {
 
 export function buildDeepSeekMessages({
   systemPrompt,
+  memoryContext,
   userMessage,
 }: {
   systemPrompt: string;
+  memoryContext?: string;
   userMessage: string;
 }): DeepSeekMessage[] {
+  const fullSystemPrompt = [systemPrompt, memoryContext ? `\n\n${memoryContext}` : ""].join("");
+
   return [
     {
       role: "user",
-      content: [`${systemPrompt}`, "", `用户说：${userMessage}`].join("\n"),
+      content: [fullSystemPrompt, "", `用户说：${userMessage}`].join("\n"),
     },
   ];
 }
 
 export function buildDeepSeekRequestBody({
   boyfriend,
+  memoryContext,
   userMessage,
 }: {
   boyfriend: Boyfriend;
+  memoryContext?: string;
   userMessage: string;
 }) {
   return {
@@ -171,6 +177,7 @@ export function buildDeepSeekRequestBody({
     max_tokens: 1024,
     messages: buildDeepSeekMessages({
       systemPrompt: getCharacterSystemPrompt(boyfriend.id),
+      memoryContext,
       userMessage,
     }),
     tools: [SEND_SELFIE_TOOL, SEND_VOICE_TOOL],
@@ -179,9 +186,11 @@ export function buildDeepSeekRequestBody({
 
 export async function generateBoyfriendReply({
   boyfriend,
+  memoryContext,
   userMessage,
 }: {
   boyfriend: Boyfriend;
+  memoryContext?: string;
   userMessage: string;
 }) {
   const apiKey = process.env.DEEPSEEK_API_KEY;
@@ -196,7 +205,7 @@ export async function generateBoyfriendReply({
       Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify(buildDeepSeekRequestBody({ boyfriend, userMessage })),
+    body: JSON.stringify(buildDeepSeekRequestBody({ boyfriend, memoryContext, userMessage })),
   });
 
   if (!response.ok) {

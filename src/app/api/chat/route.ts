@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { auth } from "@/auth";
 import { generateBoyfriendReply } from "@/lib/ai/deepseek";
+import { extractUserMemoriesFromConversation } from "@/lib/ai/memory-extractor";
 import { generateSpeechAudio } from "@/lib/ai/minimax";
 import { generateImage } from "@/lib/ai/seedream";
 import { getBoyfriendById } from "@/lib/boyfriends";
@@ -9,11 +10,14 @@ import {
   splitAssistantTextMessages,
   toAudioMessage,
   toSelfieImageMessage,
+  toUserAudioMessage,
+  toUserImageMessage,
   withClientIds,
 } from "@/lib/chat/messages";
 import { ensureSelfieForDirectRequest, isDirectSelfieRequest } from "@/lib/chat/selfie-intent";
 import { ensureVoiceForDirectRequest, isDirectVoiceRequest } from "@/lib/chat/voice-intent";
 import { saveChatMessages } from "@/lib/db/messages";
+import { formatUserMemoriesForPrompt, getUserMemories, upsertUserMemories } from "@/lib/db/user-memories";
 
 function buildSelfieImagePrompt({
   boyfriendName,
@@ -39,38 +43,73 @@ export async function POST(request: Request) {
   const body = (await request.json()) as {
     boyfriendId?: string;
     message?: string;
+    imageDataUrl?: string;
+    audioDataUrl?: string;
   };
 
   const message = body.message?.trim();
+  const imageDataUrl = body.imageDataUrl?.trim();
+  const audioDataUrl = body.audioDataUrl?.trim();
   const boyfriend = body.boyfriendId ? getBoyfriendById(body.boyfriendId) : undefined;
 
   if (!boyfriend) {
     return NextResponse.json({ error: "Unknown boyfriend" }, { status: 400 });
   }
 
-  if (!message) {
+  if (!message && !imageDataUrl && !audioDataUrl) {
     return NextResponse.json({ error: "Message is required" }, { status: 400 });
   }
 
+  const userId = session.user.email ?? session.user.name ?? "unknown-user";
+
+  let memoryContext = "";
   try {
-    const result = await generateBoyfriendReply({ boyfriend, userMessage: message });
-    const isDirectPhotoRequest = isDirectSelfieRequest(message);
-    const isDirectVoiceMessageRequest = isDirectVoiceRequest(message);
-    const selfieCalls = ensureSelfieForDirectRequest({
-      boyfriendId: boyfriend.id,
-      userMessage: message,
-      selfieCalls: result.selfieCalls,
-    });
-    const voiceCalls = ensureVoiceForDirectRequest({
-      userMessage: message,
-      assistantText: result.text,
-      voiceCalls: result.voiceCalls,
-    });
-    const textMessages =
-      (isDirectPhotoRequest && result.selfieCalls.length === 0) || isDirectVoiceMessageRequest
-        ? []
-        : splitAssistantTextMessages(result.text);
-    const imageMessages = await Promise.all(
+    const memories = await getUserMemories({ userId, boyfriendId: boyfriend.id });
+    memoryContext = formatUserMemoriesForPrompt(memories);
+  } catch (error) {
+    console.warn("[memory] failed to load", error);
+  }
+
+  const userPrompt = [
+    message || "",
+    imageDataUrl ? "[用户发送了一张图片，请结合她的文字语气回应。如果需要看图细节，可以先温柔地说明你收到了图片。]" : "",
+    audioDataUrl ? "[用户发送了一条语音消息，请像收到语音一样自然回应。]" : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  let result;
+  try {
+    result = await generateBoyfriendReply({ boyfriend, userMessage: userPrompt, memoryContext });
+  } catch (error) {
+    console.error("DeepSeek request failed:", error);
+    return NextResponse.json({ error: "LLM request failed" }, { status: 502 });
+  }
+
+  const isDirectPhotoRequest = message ? isDirectSelfieRequest(message) : false;
+  const isDirectVoiceMessageRequest = message ? isDirectVoiceRequest(message) : false;
+  const selfieCalls = ensureSelfieForDirectRequest({
+    boyfriendId: boyfriend.id,
+    userMessage: message || "",
+    selfieCalls: result.selfieCalls,
+  });
+  const voiceCalls = ensureVoiceForDirectRequest({
+    userMessage: message || "",
+    assistantText: result.text,
+    voiceCalls: result.voiceCalls,
+  });
+
+  console.log("Chat API - voiceCalls:", JSON.stringify(voiceCalls));
+  console.log("Chat API - selfieCalls:", JSON.stringify(selfieCalls));
+  console.log("Chat API - isDirectVoiceRequest:", isDirectVoiceMessageRequest);
+
+  const textMessages =
+    (isDirectPhotoRequest && result.selfieCalls.length === 0) || isDirectVoiceMessageRequest
+      ? []
+      : splitAssistantTextMessages(result.text);
+
+  const imageMessages = (
+    await Promise.allSettled(
       selfieCalls.map(async (selfieCall) => {
         const imageUrl = await generateImage({
           prompt: buildSelfieImagePrompt({
@@ -84,8 +123,16 @@ export async function POST(request: Request) {
           caption: selfieCall.caption,
         });
       }),
-    );
-    const audioMessages = await Promise.all(
+    )
+  ).flatMap((r) => {
+    if (r.status === "rejected") {
+      console.error("Image generation failed:", r.reason);
+    }
+    return r.status === "fulfilled" ? [r.value] : [];
+  });
+
+  const audioMessages = (
+    await Promise.allSettled(
       voiceCalls.map(async (voiceCall) => {
         const audioUrl = await generateSpeechAudio({
           boyfriendId: boyfriend.id,
@@ -97,25 +144,76 @@ export async function POST(request: Request) {
           caption: voiceCall.caption ?? voiceCall.text,
         });
       }),
-    );
-    const assistantMessages = [...textMessages, ...imageMessages, ...audioMessages];
-    const userMessage = {
-      role: "user" as const,
-      type: "text" as const,
-      content: message,
-    };
+    )
+  ).flatMap((r) => {
+    if (r.status === "rejected") {
+      console.error("Voice generation failed:", r.reason);
+    }
+    return r.status === "fulfilled" ? [r.value] : [];
+  });
 
+  const assistantMessages = [...textMessages, ...imageMessages, ...audioMessages];
+  const assistantTextForMemory = textMessages.map((item) => item.content).join("\n");
+  const userMessages = [
+    ...(message
+      ? [
+          {
+            role: "user" as const,
+            type: "text" as const,
+            content: message,
+          },
+        ]
+      : []),
+    ...(imageDataUrl
+      ? [
+          toUserImageMessage({
+            imageUrl: imageDataUrl,
+            caption: message || "图片消息",
+          }),
+        ]
+      : []),
+    ...(audioDataUrl
+      ? [
+          toUserAudioMessage({
+            audioUrl: audioDataUrl,
+            caption: message || "语音消息",
+          }),
+        ]
+      : []),
+  ];
+
+  try {
     await saveChatMessages({
-      userId: session.user.email ?? session.user.name ?? "unknown-user",
+      userId,
       boyfriendId: boyfriend.id,
-      messages: [userMessage, ...assistantMessages],
-    });
-
-    return NextResponse.json({
-      messages: withClientIds(assistantMessages),
+      messages: [...userMessages, ...assistantMessages],
     });
   } catch (error) {
-    console.error(error);
-    return NextResponse.json({ error: "LLM request failed" }, { status: 502 });
+    console.error("Failed to save chat messages:", error);
   }
+
+  try {
+    if (message) {
+      const extractedMemories = await extractUserMemoriesFromConversation({
+        userMessage: message,
+        assistantText: assistantTextForMemory,
+        boyfriendId: boyfriend.id,
+        boyfriendName: boyfriend.name,
+      });
+
+      if (extractedMemories.length > 0) {
+        await upsertUserMemories({
+          userId,
+          boyfriendId: boyfriend.id,
+          memories: extractedMemories,
+        });
+      }
+    }
+  } catch (error) {
+    console.warn("[memory] failed", error);
+  }
+
+  return NextResponse.json({
+    messages: withClientIds(assistantMessages),
+  });
 }

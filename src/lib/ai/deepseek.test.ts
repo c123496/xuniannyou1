@@ -30,6 +30,18 @@ describe("DeepSeek client helpers", () => {
     expect(messages[0]?.content).toContain("今天好累");
   });
 
+  it("appends long-term memory context to the system prompt", () => {
+    const messages = buildDeepSeekMessages({
+      systemPrompt: "你是林听。",
+      memoryContext: "【你已经记住的用户信息】\n- 用户喜欢的食物：火锅",
+      userMessage: "今天好累",
+    });
+
+    expect(messages[0]?.content).toContain("你是林听。");
+    expect(messages[0]?.content).toContain("用户喜欢的食物：火锅");
+    expect(messages[0]?.content).toContain("今天好累");
+  });
+
   it("defines the send_selfie tool for direct photo requests", () => {
     expect(SEND_SELFIE_TOOL).toMatchObject({
       name: "send_selfie",

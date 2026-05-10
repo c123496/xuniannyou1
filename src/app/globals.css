@@ -1,8 +1,11 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f3eadf;
+  --foreground: #241c18;
+  --brand: #c8553d;
+  --ink: #241c18;
+  --cream: #f3eadf;
 }
 
 @theme inline {
@@ -12,15 +15,49 @@
   --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--background);
 }
 
 body {
-  background: var(--background);
+  min-width: 320px;
+  overflow-x: hidden;
+  background:
+    radial-gradient(circle at 18% 8%, rgba(200, 85, 61, 0.12), transparent 30rem),
+    linear-gradient(180deg, #f7efe6 0%, #efe2d5 100%);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: Arial, "Microsoft YaHei", "PingFang SC", sans-serif;
+}
+
+.editorial-wordmark {
+  font-family: Georgia, "Times New Roman", "Songti SC", serif;
+  font-style: italic;
+  letter-spacing: 0;
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+@keyframes posterDrift {
+  0% {
+    transform: scale(1.02) translate3d(0, 0, 0);
+  }
+
+  50% {
+    transform: scale(1.08) translate3d(-1.5%, -1%, 0);
+  }
+
+  100% {
+    transform: scale(1.02) translate3d(0, 0, 0);
+  }
 }
