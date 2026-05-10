@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { auth } from "@/auth";
@@ -82,6 +83,21 @@ export default async function LandingPage() {
             ))}
           </div>
         </div>
+      </section>
+
+        <footer className="border-t border-[#D8C4B8]/60 py-6 mt-4">
+          <div className="flex flex-col items-center gap-3 text-center sm:flex-row sm:justify-between sm:text-left">
+            <p className="text-xs text-[#A08C84]">
+              © {new Date().getFullYear()} DearMate · For adults 18+ · All characters are fictional
+            </p>
+            <nav className="flex flex-wrap justify-center gap-x-5 gap-y-1 text-xs text-[#8A7168]">
+              <Link href="/pricing" className="transition hover:text-[#C8553D]">Pricing</Link>
+              <Link href="/terms" className="transition hover:text-[#C8553D]">Terms of Service</Link>
+              <Link href="/privacy" className="transition hover:text-[#C8553D]">Privacy Policy</Link>
+              <a href="mailto:support@dearmate.mom" className="transition hover:text-[#C8553D]">Contact</a>
+            </nav>
+          </div>
+        </footer>
       </section>
     </main>
   );
