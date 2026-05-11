@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { CrispChat } from "@/components/crisp-chat";
 
 export const metadata: Metadata = {
   title: "Paper Boyfriend",
@@ -13,7 +14,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="zh-CN">
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        {children}
+        <CrispChat />
+      </body>
     </html>
   );
 }
