@@ -5,21 +5,8 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { SignOutButton } from "@/components/auth-buttons";
 import { LeaveFeedbackModal } from "@/components/leave-feedback-modal";
+import { Navbar } from "@/components/navbar";
 import { boyfriends } from "@/lib/boyfriends";
-
-function Wordmark() {
-  return (
-    <div className="flex items-center gap-3 text-[#C8553D]">
-      <span className="grid grid-cols-2 gap-1" aria-hidden="true">
-        <span className="h-1.5 w-1.5 rounded-full bg-current" />
-        <span className="h-1.5 w-1.5 rounded-full bg-current" />
-        <span className="h-1.5 w-1.5 rounded-full bg-current" />
-        <span className="h-1.5 w-1.5 rounded-full bg-current" />
-      </span>
-      <span className="editorial-wordmark text-2xl font-semibold">纸片人男友</span>
-    </div>
-  );
-}
 
 export default async function HomePage() {
   const session = await auth();
@@ -30,19 +17,15 @@ export default async function HomePage() {
 
   return (
     <main className="min-h-screen bg-[#F3EADF] text-[#241C18]">
-      <header className="sticky top-0 z-20 border-b border-[#D8C4B8]/60 bg-[#F3EADF]/88 px-5 py-5 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
-          <div>
-            <Wordmark />
-            <h1 className="mt-4 text-3xl font-semibold tracking-normal sm:text-4xl">
-              今天想先见谁？
-            </h1>
-          </div>
+      <Navbar />
+
+      <section className="mx-auto max-w-7xl px-4 pb-16 pt-8 sm:px-6">
+        <div className="mb-8 flex items-end justify-between">
+          <h1 className="text-3xl font-semibold tracking-normal sm:text-4xl">
+            今天想先见谁？
+          </h1>
           <SignOutButton />
         </div>
-      </header>
-
-      <section className="mx-auto max-w-7xl px-4 pb-16 pt-6 sm:px-6">
         <div className="grid grid-cols-2 gap-3 sm:gap-5 xl:grid-cols-4">
           {boyfriends.map((boyfriend, index) => (
             <Link

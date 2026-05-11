@@ -1,6 +1,8 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 
+import { Navbar } from "@/components/navbar";
+
 export const metadata: Metadata = {
   title: "Privacy Policy | DearMate",
   description: "Privacy Policy for DearMate — how we collect, use, and protect your data.",
@@ -12,6 +14,7 @@ const CONTACT_EMAIL = "support@dearmate.mom";
 export default function PrivacyPage() {
   return (
     <main className="min-h-screen bg-[#F3EADF] text-[#241C18]">
+      <Navbar />
       <div className="mx-auto max-w-3xl px-5 py-16 sm:px-8">
         <Link
           href="/"

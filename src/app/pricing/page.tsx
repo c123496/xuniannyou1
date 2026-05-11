@@ -1,6 +1,8 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 
+import { Navbar } from "@/components/navbar";
+
 export const metadata: Metadata = {
   title: "Pricing | DearMate",
   description: "Simple, transparent pricing for DearMate AI companion.",
@@ -42,6 +44,7 @@ const PRO_FEATURES = [
 export default function PricingPage() {
   return (
     <main className="min-h-screen bg-[#F3EADF] text-[#241C18]">
+      <Navbar />
       <div className="mx-auto max-w-5xl px-5 py-16 sm:px-8">
         <Link
           href="/"
