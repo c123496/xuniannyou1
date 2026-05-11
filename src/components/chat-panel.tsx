@@ -24,6 +24,51 @@ function readFileAsDataUrl(file: File) {
   });
 }
 
+function ShareButton({
+  boyfriendId,
+  type,
+  content,
+  imageUrl,
+}: {
+  boyfriendId: string;
+  type: "text" | "image";
+  content?: string;
+  imageUrl?: string;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  function handleShare() {
+    const params = new URLSearchParams({ bid: boyfriendId, t: type });
+    if (content) params.set("c", content.slice(0, 200));
+    if (imageUrl) params.set("img", imageUrl);
+    window.open(`/api/share-card?${params.toString()}`, "_blank");
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+
+  return (
+    <button
+      onClick={handleShare}
+      title="生成分享卡片"
+      type="button"
+      className="mt-2 flex items-center gap-1 self-end rounded-full border border-[#E2D0C0] bg-[#F7F0E6] px-2.5 py-1 text-[11px] text-[#7C6860] transition hover:border-[#C8553D]/40 hover:text-[#C8553D]"
+    >
+      {copied ? (
+        "已打开 ✓"
+      ) : (
+        <>
+          <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8">
+            <path d="M10 2H14V6" />
+            <path d="M14 2L8 8" />
+            <path d="M7 3H3C2.45 3 2 3.45 2 4V13C2 13.55 2.45 14 3 14H12C12.55 14 13 13.55 13 13V9" />
+          </svg>
+          分享卡片
+        </>
+      )}
+    </button>
+  );
+}
+
 function AssistantBubble({
   boyfriend,
   message,
@@ -44,31 +89,49 @@ function AssistantBubble({
           unoptimized
         />
       </div>
-      <div className="rounded-[22px] rounded-tl-[6px] border border-[#E8D8C8] bg-white/92 px-4 py-3.5 text-[#1A1210] shadow-[0_10px_32px_rgba(60,40,30,0.08)] backdrop-blur sm:px-5 sm:py-4">
-        <p className="mb-2.5 text-[11px] font-medium tracking-wide text-[#C8553D]">{boyfriend.name}</p>
+      <div className="flex flex-col">
+        <div className="rounded-[22px] rounded-tl-[6px] border border-[#E8D8C8] bg-white/92 px-4 py-3.5 text-[#1A1210] shadow-[0_10px_32px_rgba(60,40,30,0.08)] backdrop-blur sm:px-5 sm:py-4">
+          <p className="mb-2.5 text-[11px] font-medium tracking-wide text-[#C8553D]">{boyfriend.name}</p>
 
-        {message.type === "image" ? (
-          <figure className="space-y-3">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              alt={message.caption ?? "男友发来的图片"}
-              className="max-h-[460px] w-full rounded-[16px] object-cover"
-              src={message.imageUrl}
-            />
-            {message.caption ? (
-              <figcaption className="text-sm leading-7 text-[#4A3830]">{message.caption}</figcaption>
-            ) : null}
-          </figure>
-        ) : message.type === "audio" ? (
-          <div className="space-y-3">
-            <p className="text-sm leading-7 text-[#4A3830]">{message.caption ?? "点开听"}</p>
-            <audio className="w-full max-w-[320px]" controls src={message.audioUrl}>
-              你的浏览器暂时不能播放这条语音。
-            </audio>
-          </div>
-        ) : (
-          <p className="whitespace-pre-wrap text-[15px] leading-[1.85]">{message.content}</p>
-        )}
+          {message.type === "image" ? (
+            <figure className="space-y-3">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                alt={message.caption ?? "男友发来的图片"}
+                className="max-h-[460px] w-full rounded-[16px] object-cover"
+                src={message.imageUrl}
+              />
+              {message.caption ? (
+                <figcaption className="text-sm leading-7 text-[#4A3830]">{message.caption}</figcaption>
+              ) : null}
+            </figure>
+          ) : message.type === "audio" ? (
+            <div className="space-y-3">
+              <p className="text-sm leading-7 text-[#4A3830]">{message.caption ?? "点开听"}</p>
+              <audio className="w-full max-w-[320px]" controls src={message.audioUrl}>
+                你的浏览器暂时不能播放这条语音。
+              </audio>
+            </div>
+          ) : (
+            <p className="whitespace-pre-wrap text-[15px] leading-[1.85]">{message.content}</p>
+          )}
+        </div>
+
+        {/* 分享按钮：文字消息和图片消息都显示 */}
+        {message.type === "text" && message.content ? (
+          <ShareButton
+            boyfriendId={boyfriend.id}
+            type="text"
+            content={message.content}
+          />
+        ) : message.type === "image" && message.imageUrl ? (
+          <ShareButton
+            boyfriendId={boyfriend.id}
+            type="image"
+            content={message.caption}
+            imageUrl={message.imageUrl}
+          />
+        ) : null}
       </div>
     </article>
   );
