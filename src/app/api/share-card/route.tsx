@@ -28,6 +28,17 @@ export async function GET(request: NextRequest) {
 
   const avatarUrl = `${SITE_URL}${boyfriend.avatarImageUrl}`;
 
+  // 加载中文字体（Noto Sans SC），未加载时汉字显示为方块
+  let fontData: ArrayBuffer | undefined;
+  try {
+    const res = await fetch(
+      "https://cdn.jsdelivr.net/npm/@fontsource/noto-sans-sc@5/files/noto-sans-sc-chinese-simplified-400-normal.woff2",
+    );
+    if (res.ok) fontData = await res.arrayBuffer();
+  } catch {
+    // 降级：不传字体，汉字可能显示方块但不影响卡片结构
+  }
+
   return new ImageResponse(
     (
       <div
@@ -40,6 +51,7 @@ export async function GET(request: NextRequest) {
             "linear-gradient(160deg, #FAF5EE 0%, #F2E8D8 55%, #EBE0CC 100%)",
           padding: "64px",
           position: "relative",
+          fontFamily: "NotoSansSC, sans-serif",
         }}
       >
         {/* 纹理装饰点 —— 右上角 */}
@@ -268,6 +280,9 @@ export async function GET(request: NextRequest) {
     {
       width: 1080,
       height: 1080,
+      fonts: fontData
+        ? [{ name: "NotoSansSC", data: fontData, weight: 400 as const, style: "normal" as const }]
+        : [],
     },
   );
 }

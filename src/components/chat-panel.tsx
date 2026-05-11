@@ -180,6 +180,7 @@ export function ChatPanel({ boyfriend }: { boyfriend: Boyfriend }) {
   const [audioDataUrl, setAudioDataUrl] = useState<string | null>(null);
   const [isSending, setIsSending] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
+  const [isLoadingMedia, setIsLoadingMedia] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -327,9 +328,7 @@ export function ChatPanel({ boyfriend }: { boyfriend: Boyfriend }) {
     try {
       const response = await fetch("/api/chat", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           boyfriendId: boyfriend.id,
           message: content,
@@ -338,28 +337,72 @@ export function ChatPanel({ boyfriend }: { boyfriend: Boyfriend }) {
         }),
       });
 
-      if (!response.ok) {
+      if (!response.ok || !response.body) {
         throw new Error("chat request failed");
       }
 
-      const data = (await response.json()) as { messages?: ChatMessage[] };
-      revealAssistantMessages(
-        data.messages?.length
-          ? data.messages
-          : [
-              {
-                id: crypto.randomUUID(),
-                role: "assistant" as const,
-                type: "text" as const,
-                content: "我刚才有点走神。你再说一遍，好吗？",
-              },
-            ],
-      );
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let gotText = false;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const parts = buffer.split("\n\n");
+        buffer = parts.pop() ?? "";
+
+        for (const part of parts) {
+          if (!part.startsWith("data: ")) continue;
+          let event: { type: string; messages?: ChatMessage[]; hasMedia?: boolean };
+          try {
+            event = JSON.parse(part.slice(6)) as typeof event;
+          } catch {
+            continue;
+          }
+
+          if (event.type === "text") {
+            gotText = true;
+            const msgs = event.messages ?? [];
+            if (msgs.length > 0) {
+              revealAssistantMessages(msgs);
+            } else {
+              setIsTyping(false);
+            }
+            if (event.hasMedia) setIsLoadingMedia(true);
+          } else if (event.type === "media") {
+            setIsLoadingMedia(false);
+            const msgs = event.messages ?? [];
+            if (msgs.length > 0) {
+              setMessages((prev) => [...prev, ...msgs]);
+            }
+          } else if (event.type === "done") {
+            setIsLoadingMedia(false);
+          } else if (event.type === "error") {
+            throw new Error("server error");
+          }
+        }
+      }
+
+      if (!gotText) {
+        revealAssistantMessages([
+          {
+            id: crypto.randomUUID(),
+            role: "assistant" as const,
+            type: "text" as const,
+            content: "我刚才有点走神。你再说一遍，好吗？",
+          },
+        ]);
+      }
     } catch {
       setIsTyping(false);
+      setIsLoadingMedia(false);
       setError("刚才没有连上模型。稍等一下再试。");
     } finally {
       setIsSending(false);
+      setIsLoadingMedia(false);
     }
   }
 
@@ -375,6 +418,10 @@ export function ChatPanel({ boyfriend }: { boyfriend: Boyfriend }) {
             <AssistantBubble boyfriend={boyfriend} key={message.id} message={message} />
           ),
         )}
+
+        {isLoadingMedia ? (
+          <p className="pl-12 text-xs text-[#B0A099]">图片生成中…</p>
+        ) : null}
 
         {isTyping ? (
           <div className="flex max-w-[80%] items-center gap-2.5 sm:max-w-[65%]">

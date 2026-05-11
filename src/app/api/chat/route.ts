@@ -23,6 +23,9 @@ import { saveChatMessages } from "@/lib/db/messages";
 import { getAffectionScore, updateAffectionScore } from "@/lib/db/user-affection";
 import { formatUserMemoriesForPrompt, getUserMemories, upsertUserMemories } from "@/lib/db/user-memories";
 
+// 允许图片+语音并行生成，最长 60s
+export const maxDuration = 60;
+
 function buildSelfieImagePrompt({
   boyfriendName,
   scene,
@@ -65,183 +68,187 @@ export async function POST(request: Request) {
   }
 
   const userId = session.user.email ?? session.user.name ?? "unknown-user";
+  const encoder = new TextEncoder();
 
-  // 并行加载记忆和好感度
-  let memoryContext = "";
-  let affectionState: import("@/lib/db/user-affection").AffectionState = { score: 60, level: "warm" };
-
-  const [memoriesResult, affectionResult] = await Promise.allSettled([
-    getUserMemories({ userId, boyfriendId: boyfriend.id }),
-    getAffectionScore({ userId, boyfriendId: boyfriend.id }),
-  ]);
-
-  if (memoriesResult.status === "fulfilled") {
-    memoryContext = formatUserMemoriesForPrompt(memoriesResult.value);
-  } else {
-    console.warn("[memory] failed to load", memoriesResult.reason);
-  }
-
-  if (affectionResult.status === "fulfilled") {
-    affectionState = affectionResult.value;
-  }
-
-  const userPrompt = [
-    message || "",
-    imageDataUrl ? "[用户发送了一张图片，请结合她的文字语气回应。如果需要看图细节，可以先温柔地说明你收到了图片。]" : "",
-    audioDataUrl ? "[用户发送了一条语音消息，请像收到语音一样自然回应。]" : "",
-  ]
-    .filter(Boolean)
-    .join("\n");
-
-  let result;
-  try {
-    result = await generateBoyfriendReply({ boyfriend, userMessage: userPrompt, memoryContext, affectionState });
-  } catch (error) {
-    console.error("DeepSeek request failed:", error);
-    return NextResponse.json({ error: "LLM request failed" }, { status: 502 });
-  }
-
-  const isDirectPhotoRequest = message ? isDirectSelfieRequest(message) : false;
-  const isDirectVoiceMessageRequest = message ? isDirectVoiceRequest(message) : false;
-  const selfieCalls = ensureSelfieForDirectRequest({
-    boyfriendId: boyfriend.id,
-    userMessage: message || "",
-    selfieCalls: result.selfieCalls,
-  });
-  const voiceCalls = ensureVoiceForDirectRequest({
-    userMessage: message || "",
-    assistantText: result.text,
-    voiceCalls: result.voiceCalls,
-  });
-
-  console.log("Chat API - voiceCalls:", JSON.stringify(voiceCalls));
-  console.log("Chat API - selfieCalls:", JSON.stringify(selfieCalls));
-  console.log("Chat API - isDirectVoiceRequest:", isDirectVoiceMessageRequest);
-
-  const textMessages =
-    (isDirectPhotoRequest && result.selfieCalls.length === 0) || isDirectVoiceMessageRequest
-      ? []
-      : splitAssistantTextMessages(result.text);
-
-  const imageMessages = (
-    await Promise.allSettled(
-      selfieCalls.map(async (selfieCall) => {
-        // 1. 调用 Seedream 直接拿到 buffer（b64_json 格式，无需二次 fetch）
-        const { buffer, mimeType } = await generateImage({
-          prompt: buildSelfieImagePrompt({
-            boyfriendName: boyfriend.name,
-            scene: selfieCall.scene,
-          }),
-        });
-
-        // 2. 直接上传 buffer 到 R2，获取永久链接
-        const fileName = `selfies/${nanoid()}.png`;
-        const imageUrl = await uploadToR2(buffer, fileName, mimeType);
-
-        return toSelfieImageMessage({
-          imageUrl,
-          caption: selfieCall.caption,
-        });
-      }),
-    )
-  ).flatMap((r) => {
-    if (r.status === "rejected") {
-      console.error("Image generation failed:", r.reason);
-    }
-    return r.status === "fulfilled" ? [r.value] : [];
-  });
-
-  const audioMessages = (
-    await Promise.allSettled(
-      voiceCalls.map(async (voiceCall) => {
-        const audioUrl = await generateSpeechAudio({
-          boyfriendId: boyfriend.id,
-          text: voiceCall.text,
-        });
-
-        return toAudioMessage({
-          audioUrl,
-          caption: voiceCall.caption ?? voiceCall.text,
-        });
-      }),
-    )
-  ).flatMap((r) => {
-    if (r.status === "rejected") {
-      console.error("Voice generation failed:", r.reason);
-    }
-    return r.status === "fulfilled" ? [r.value] : [];
-  });
-
-  const assistantMessages = [...textMessages, ...imageMessages, ...audioMessages];
-  const assistantTextForMemory = textMessages.map((item) => item.content).join("\n");
-  const userMessages = [
-    ...(message
-      ? [
-          {
-            role: "user" as const,
-            type: "text" as const,
-            content: message,
-          },
-        ]
-      : []),
-    ...(imageDataUrl
-      ? [
-          toUserImageMessage({
-            imageUrl: imageDataUrl,
-            caption: message || "图片消息",
-          }),
-        ]
-      : []),
-    ...(audioDataUrl
-      ? [
-          toUserAudioMessage({
-            audioUrl: audioDataUrl,
-            caption: message || "语音消息",
-          }),
-        ]
-      : []),
-  ];
-
-  try {
-    await saveChatMessages({
-      userId,
-      boyfriendId: boyfriend.id,
-      messages: [...userMessages, ...assistantMessages],
-    });
-  } catch (error) {
-    console.error("Failed to save chat messages:", error);
-  }
-
-  // 并行执行：记忆提取 + 好感度更新（不阻塞响应）
-  if (message) {
-    Promise.allSettled([
-      // 记忆提取
-      extractUserMemoriesFromConversation({
-        userMessage: message,
-        assistantText: assistantTextForMemory,
-        boyfriendId: boyfriend.id,
-        boyfriendName: boyfriend.name,
-      }).then(async (extractedMemories) => {
-        if (extractedMemories.length > 0) {
-          await upsertUserMemories({ userId, boyfriendId: boyfriend.id, memories: extractedMemories });
+  const stream = new ReadableStream({
+    async start(controller) {
+      const send = (data: object) => {
+        try {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
+        } catch {
+          // 客户端已断开，忽略
         }
-      }),
+      };
 
-      // 好感度评分 + 更新
-      scoreAffectionDelta({ userMessage: message, assistantText: assistantTextForMemory })
-        .then((delta) => {
-          console.log(`[affection] ${userId} ← ${boyfriend.id}: delta=${delta}, before=${affectionState.score}`);
-          return updateAffectionScore({ userId, boyfriendId: boyfriend.id, delta });
-        })
-        .then(({ score, level }) => {
-          console.log(`[affection] after=${score} (${level})`);
-        }),
-    ]).catch(() => {
-      // 静默，不影响主流程
-    });
-  }
+      try {
+        // 并行加载记忆和好感度
+        let memoryContext = "";
+        let affectionState: import("@/lib/db/user-affection").AffectionState = { score: 60, level: "warm" };
 
-  return NextResponse.json({
-    messages: withClientIds(assistantMessages),
+        const [memoriesResult, affectionResult] = await Promise.allSettled([
+          getUserMemories({ userId, boyfriendId: boyfriend.id }),
+          getAffectionScore({ userId, boyfriendId: boyfriend.id }),
+        ]);
+
+        if (memoriesResult.status === "fulfilled") {
+          memoryContext = formatUserMemoriesForPrompt(memoriesResult.value);
+        } else {
+          console.warn("[memory] failed to load", memoriesResult.reason);
+        }
+
+        if (affectionResult.status === "fulfilled") {
+          affectionState = affectionResult.value;
+        }
+
+        const userPrompt = [
+          message || "",
+          imageDataUrl ? "[用户发送了一张图片，请结合她的文字语气回应。如果需要看图细节，可以先温柔地说明你收到了图片。]" : "",
+          audioDataUrl ? "[用户发送了一条语音消息，请像收到语音一样自然回应。]" : "",
+        ]
+          .filter(Boolean)
+          .join("\n");
+
+        let result;
+        try {
+          result = await generateBoyfriendReply({ boyfriend, userMessage: userPrompt, memoryContext, affectionState });
+        } catch (error) {
+          console.error("DeepSeek request failed:", error);
+          send({ type: "error", message: "LLM request failed" });
+          controller.close();
+          return;
+        }
+
+        const isDirectPhotoRequest = message ? isDirectSelfieRequest(message) : false;
+        const isDirectVoiceMessageRequest = message ? isDirectVoiceRequest(message) : false;
+        const selfieCalls = ensureSelfieForDirectRequest({
+          boyfriendId: boyfriend.id,
+          userMessage: message || "",
+          selfieCalls: result.selfieCalls,
+        });
+        const voiceCalls = ensureVoiceForDirectRequest({
+          userMessage: message || "",
+          assistantText: result.text,
+          voiceCalls: result.voiceCalls,
+        });
+
+        const textMessages =
+          (isDirectPhotoRequest && result.selfieCalls.length === 0) || isDirectVoiceMessageRequest
+            ? []
+            : splitAssistantTextMessages(result.text);
+
+        const hasMedia = selfieCalls.length > 0 || voiceCalls.length > 0;
+
+        // ── Step 1：立即推送文字消息 ────────────────────────────────
+        send({ type: "text", messages: withClientIds(textMessages), hasMedia });
+
+        const userMessages = [
+          ...(message
+            ? [{ role: "user" as const, type: "text" as const, content: message }]
+            : []),
+          ...(imageDataUrl
+            ? [toUserImageMessage({ imageUrl: imageDataUrl, caption: message || "图片消息" })]
+            : []),
+          ...(audioDataUrl
+            ? [toUserAudioMessage({ audioUrl: audioDataUrl, caption: message || "语音消息" })]
+            : []),
+        ];
+
+        // 异步保存用户消息 + 文字消息（不阻塞流）
+        saveChatMessages({
+          userId,
+          boyfriendId: boyfriend.id,
+          messages: [...userMessages, ...textMessages],
+        }).catch((err) => console.error("Failed to save text messages:", err));
+
+        const assistantTextForMemory = textMessages.map((m) => m.content).join("\n");
+
+        // ── Step 2：并行生成图片和语音，生成完立即推送 ───────────────
+        if (hasMedia) {
+          const [imageMessages, audioMessages] = await Promise.all([
+            Promise.allSettled(
+              selfieCalls.map(async (selfieCall) => {
+                const { buffer, mimeType } = await generateImage({
+                  prompt: buildSelfieImagePrompt({
+                    boyfriendName: boyfriend.name,
+                    scene: selfieCall.scene,
+                  }),
+                });
+                const fileName = `selfies/${nanoid()}.png`;
+                const imageUrl = await uploadToR2(buffer, fileName, mimeType);
+                return toSelfieImageMessage({ imageUrl, caption: selfieCall.caption });
+              }),
+            ).then((results) =>
+              results.flatMap((r) => {
+                if (r.status === "rejected") console.error("Image generation failed:", r.reason);
+                return r.status === "fulfilled" ? [r.value] : [];
+              }),
+            ),
+            Promise.allSettled(
+              voiceCalls.map(async (voiceCall) => {
+                const audioUrl = await generateSpeechAudio({
+                  boyfriendId: boyfriend.id,
+                  text: voiceCall.text,
+                });
+                return toAudioMessage({ audioUrl, caption: voiceCall.caption ?? voiceCall.text });
+              }),
+            ).then((results) =>
+              results.flatMap((r) => {
+                if (r.status === "rejected") console.error("Voice generation failed:", r.reason);
+                return r.status === "fulfilled" ? [r.value] : [];
+              }),
+            ),
+          ]);
+
+          const mediaMessages = [...imageMessages, ...audioMessages];
+          if (mediaMessages.length > 0) {
+            send({ type: "media", messages: withClientIds(mediaMessages) });
+            saveChatMessages({
+              userId,
+              boyfriendId: boyfriend.id,
+              messages: mediaMessages,
+            }).catch((err) => console.error("Failed to save media messages:", err));
+          }
+        }
+
+        send({ type: "done" });
+
+        // 非阻塞：记忆提取 + 好感度更新
+        if (message) {
+          Promise.allSettled([
+            extractUserMemoriesFromConversation({
+              userMessage: message,
+              assistantText: assistantTextForMemory,
+              boyfriendId: boyfriend.id,
+              boyfriendName: boyfriend.name,
+            }).then(async (extractedMemories) => {
+              if (extractedMemories.length > 0) {
+                await upsertUserMemories({ userId, boyfriendId: boyfriend.id, memories: extractedMemories });
+              }
+            }),
+            scoreAffectionDelta({ userMessage: message, assistantText: assistantTextForMemory })
+              .then((delta) => {
+                console.log(`[affection] ${userId} ← ${boyfriend.id}: delta=${delta}, before=${affectionState.score}`);
+                return updateAffectionScore({ userId, boyfriendId: boyfriend.id, delta });
+              })
+              .then(({ score, level }) => {
+                console.log(`[affection] after=${score} (${level})`);
+              }),
+          ]).catch(() => {});
+        }
+      } catch (error) {
+        console.error("Stream error:", error);
+        send({ type: "error", message: "request failed" });
+      } finally {
+        controller.close();
+      }
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      "X-Accel-Buffering": "no",
+    },
   });
 }
