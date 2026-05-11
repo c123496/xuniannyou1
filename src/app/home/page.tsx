@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 
 import { auth } from "@/auth";
 import { SignOutButton } from "@/components/auth-buttons";
+import { LeaveFeedbackModal } from "@/components/leave-feedback-modal";
 import { boyfriends } from "@/lib/boyfriends";
 
 function Wordmark() {
@@ -82,6 +83,16 @@ export default async function HomePage() {
           ))}
         </div>
       </section>
+
+      <footer className="pb-8 text-center">
+        <LeaveFeedbackModal
+          trigger={
+            <span className="text-xs text-[#C4B0A8] transition hover:text-[#C8553D]">
+              取消订阅 / 注销账号
+            </span>
+          }
+        />
+      </footer>
     </main>
   );
 }
