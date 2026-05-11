@@ -24,21 +24,13 @@ export async function POST(request: Request) {
   }
 
   try {
-    // 1. 调用 Seedream AI 生成图片，拿到临时链接
-    const tempImageUrl = await generateImage({ prompt, image: body.image });
+    // 1. 直接拿到 buffer（b64_json，无需二次 fetch）
+    const { buffer, mimeType } = await generateImage({ prompt, image: body.image });
 
-    // 2. 下载临时图片
-    const imageResponse = await fetch(tempImageUrl);
-    if (!imageResponse.ok) {
-      throw new Error(`Failed to download image: ${imageResponse.status}`);
-    }
-    const imageBuffer = Buffer.from(await imageResponse.arrayBuffer());
-
-    // 3. 生成唯一文件名并上传到 R2
+    // 2. 上传到 R2，返回永久链接
     const fileName = `images/${nanoid()}.png`;
-    const permanentUrl = await uploadToR2(imageBuffer, fileName, "image/png");
+    const permanentUrl = await uploadToR2(buffer, fileName, mimeType);
 
-    // 4. 返回永久链接
     return NextResponse.json({ imageUrl: permanentUrl });
   } catch (error) {
     console.error(error);

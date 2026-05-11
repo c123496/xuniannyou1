@@ -113,26 +113,17 @@ export async function POST(request: Request) {
   const imageMessages = (
     await Promise.allSettled(
       selfieCalls.map(async (selfieCall) => {
-        // 1. 生成临时图片链接
-        const tempImageUrl = await generateImage({
+        // 1. 调用 Seedream 直接拿到 buffer（b64_json 格式，无需二次 fetch）
+        const { buffer, mimeType } = await generateImage({
           prompt: buildSelfieImagePrompt({
             boyfriendName: boyfriend.name,
             scene: selfieCall.scene,
           }),
         });
 
-        // 2. 下载图片并上传到 R2，获取永久链接
-        let imageUrl = tempImageUrl;
-        try {
-          const imgRes = await fetch(tempImageUrl);
-          if (imgRes.ok) {
-            const buffer = Buffer.from(await imgRes.arrayBuffer());
-            const fileName = `selfies/${nanoid()}.png`;
-            imageUrl = await uploadToR2(buffer, fileName, "image/png");
-          }
-        } catch (uploadError) {
-          console.error("[R2] upload failed, falling back to temp URL:", uploadError);
-        }
+        // 2. 直接上传 buffer 到 R2，获取永久链接
+        const fileName = `selfies/${nanoid()}.png`;
+        const imageUrl = await uploadToR2(buffer, fileName, mimeType);
 
         return toSelfieImageMessage({
           imageUrl,
