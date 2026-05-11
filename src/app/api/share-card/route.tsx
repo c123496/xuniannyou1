@@ -9,6 +9,34 @@ export const dynamic = "force-dynamic";
 const SITE_URL = "https://www.dearmate.mom";
 const MAX_TEXT_LENGTH = 120;
 
+/**
+ * 通过 Google Fonts CSS2 text 参数加载最小字体子集。
+ * 每张卡片只会包含几十个汉字，子集体积 < 30KB，比全量 WOFF2 快得多。
+ * 若失败返回 undefined，ImageResponse 回退到内建字体（汉字显示方块，但卡片不空白）。
+ */
+async function loadSubsetFont(chars: string): Promise<ArrayBuffer | undefined> {
+  try {
+    const unique = [...new Set(chars)].filter((c) => c.trim()).join("");
+    const cssUrl = `https://fonts.googleapis.com/css2?family=Noto+Sans+SC&text=${encodeURIComponent(unique)}`;
+
+    const css = await fetch(cssUrl, {
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      },
+    }).then((r) => r.text());
+
+    const fontUrl = css.match(/src: url\((.+?\.woff2)\)/)?.[1];
+    if (!fontUrl) return undefined;
+
+    const res = await fetch(fontUrl);
+    if (!res.ok) return undefined;
+    return res.arrayBuffer();
+  } catch {
+    return undefined;
+  }
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const boyfriendId = searchParams.get("bid") ?? "lin_ting";
@@ -28,16 +56,16 @@ export async function GET(request: NextRequest) {
 
   const avatarUrl = `${SITE_URL}${boyfriend.avatarImageUrl}`;
 
-  // 加载中文字体（Noto Sans SC），未加载时汉字显示为方块
-  let fontData: ArrayBuffer | undefined;
-  try {
-    const res = await fetch(
-      "https://cdn.jsdelivr.net/npm/@fontsource/noto-sans-sc@5/files/noto-sans-sc-chinese-simplified-400-normal.woff2",
-    );
-    if (res.ok) fontData = await res.arrayBuffer();
-  } catch {
-    // 降级：不传字体，汉字可能显示方块但不影响卡片结构
-  }
+  // 加载卡片所有文字的最小字体子集
+  const allChars = `纸片人男友${boyfriend.name}${boyfriend.age}岁${boyfriend.positioning}${content}说他也可以陪你让闺蜜也试试`;
+  const fontData = await loadSubsetFont(allChars);
+
+  // 只有字体加载成功时才设置 fontFamily；否则不传 fonts 选项，
+  // satori 用内建字体渲染（汉字变方块但卡片结构完整）。
+  const rootFontStyle = fontData ? { fontFamily: "NotoSansSC" } : {};
+  const ogFonts = fontData
+    ? [{ name: "NotoSansSC", data: fontData, weight: 400 as const, style: "normal" as const }]
+    : undefined;
 
   return new ImageResponse(
     (
@@ -51,7 +79,7 @@ export async function GET(request: NextRequest) {
             "linear-gradient(160deg, #FAF5EE 0%, #F2E8D8 55%, #EBE0CC 100%)",
           padding: "64px",
           position: "relative",
-          fontFamily: "NotoSansSC, sans-serif",
+          ...rootFontStyle,
         }}
       >
         {/* 纹理装饰点 —— 右上角 */}
@@ -223,7 +251,6 @@ export async function GET(request: NextRequest) {
                   opacity: 0.15,
                   lineHeight: 0.8,
                   marginBottom: "8px",
-                  fontFamily: "Georgia, serif",
                 }}
               >
                 "
@@ -280,9 +307,7 @@ export async function GET(request: NextRequest) {
     {
       width: 1080,
       height: 1080,
-      fonts: fontData
-        ? [{ name: "NotoSansSC", data: fontData, weight: 400 as const, style: "normal" as const }]
-        : [],
+      ...(ogFonts ? { fonts: ogFonts } : {}),
     },
   );
 }
