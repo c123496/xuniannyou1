@@ -1,5 +1,7 @@
 import { Resend } from "resend";
 
+import { getPool } from "@/lib/db/pool";
+
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 const FROM = "纸片人男友 <dearmate@dearmate.mom>";
@@ -76,6 +78,38 @@ export async function sendWelcomeEmail(
       </div>
     `,
   });
+}
+
+// ── 批量给所有用户发早安情书 ─────────────────────────────────────────────────
+
+export async function sendDailyLoveLetterToAll() {
+  const db = getPool();
+  if (!db) {
+    console.warn("[email] DATABASE_URL 未配置，跳过批量发送。");
+    return;
+  }
+
+  // 从 messages 表取所有去重用户（user_id 即邮箱）
+  const result = await db.query<{ user_id: string }>(
+    "SELECT DISTINCT user_id FROM messages WHERE user_id LIKE '%@%'",
+  );
+
+  const users = result.rows;
+  console.log(`[email] 准备发送早安情书，共 ${users.length} 位用户。`);
+
+  for (const { user_id } of users) {
+    // 用邮箱前缀作为称呼（如 hello@gmail.com → hello）
+    const displayName = user_id.split("@")[0] ?? "你";
+    try {
+      await sendDailyLoveLetter(user_id, displayName);
+      console.log(`[email] ✓ ${user_id}`);
+    } catch (error) {
+      console.error(`[email] ✗ 给 ${user_id} 发情话失败：`, error);
+      // 某个用户失败不影响其他用户
+    }
+  }
+
+  console.log("[email] 批量发送完成。");
 }
 
 // ── 每日早安情书 ──────────────────────────────────────────────────────────────
