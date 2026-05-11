@@ -32,9 +32,12 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
       // 只对新用户（无任何历史消息）发送欢迎邮件
       const newUser = await isNewUser(userId);
       if (newUser) {
-        await sendWelcomeEmail(user.email, user.name ?? "你").catch((err) => {
-          console.error("[email] 欢迎邮件发送失败:", err);
-        });
+        try {
+          await sendWelcomeEmail(user.email, user.name ?? "你");
+        } catch (error) {
+          console.error("欢迎邮件发送失败：", error);
+          // 不 throw，不影响登录流程
+        }
       }
     },
   },
