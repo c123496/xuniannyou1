@@ -11,6 +11,7 @@
     "db:migrate": "node scripts/run-migrations.mjs"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1045.0",
     "@marsidev/react-turnstile": "^1.5.2",
     "next": "16.2.6",
     "next-auth": "^5.0.0-beta.31",
