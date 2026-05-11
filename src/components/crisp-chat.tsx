@@ -1,27 +1,27 @@
-"use client";
+'use client'
 
-import { useEffect } from "react";
+import { useEffect } from 'react'
 
-export function CrispChat() {
-  const websiteId = process.env.NEXT_PUBLIC_CRISP_WEBSITE_ID;
-
+export default function CrispChat() {
   useEffect(() => {
-    if (!websiteId) return;
+    const websiteId = process.env.NEXT_PUBLIC_CRISP_WEBSITE_ID
+    if (!websiteId) return
 
-    // 初始化 Crisp
-    (window as unknown as Record<string, unknown>).$crisp = [];
-    (window as unknown as Record<string, unknown>).CRISP_WEBSITE_ID = websiteId;
+    // 设置 Crisp 的 Website ID
+    ;(window as any).$crisp = []
+    ;(window as any).CRISP_WEBSITE_ID = websiteId
 
-    const script = document.createElement("script");
-    script.src = "https://client.crisp.chat/l.js";
-    script.async = true;
-    document.head.appendChild(script);
+    // 加载 Crisp 的脚本
+    const script = document.createElement('script')
+    script.src = 'https://client.crisp.chat/l.js'
+    script.async = true
+    document.head.appendChild(script)
 
     return () => {
-      // 组件卸载时移除脚本（页面路由切换时不常见，但保持干净）
-      document.head.removeChild(script);
-    };
-  }, [websiteId]);
+      // 清理
+      document.head.removeChild(script)
+    }
+  }, [])
 
-  return null;
+  return null  // 这个组件不渲染任何东西，只负责加载 Crisp 脚本
 }

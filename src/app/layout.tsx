@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { CrispChat } from "@/components/crisp-chat";
+import CrispChat from "@/components/crisp-chat";
 
 export const metadata: Metadata = {
   title: "Paper Boyfriend",
