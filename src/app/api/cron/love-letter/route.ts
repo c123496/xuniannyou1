@@ -3,23 +3,42 @@ import { type NextRequest, NextResponse } from "next/server";
 import { sendDailyLoveLetterToAll } from "@/lib/email";
 
 export async function GET(request: NextRequest) {
-  // 调试日志（确认后可删除）
-  const authHeader = request.headers.get("authorization");
   const cronSecret = process.env.CRON_SECRET;
-  console.log("[cron] authHeader received:", authHeader);
-  console.log("[cron] CRON_SECRET set:", !!cronSecret);
-  console.log("[cron] expected:", `Bearer ${cronSecret}`);
-  console.log("[cron] match:", authHeader === `Bearer ${cronSecret}`);
 
-  // 第一步：验证请求是否合法
-  if (authHeader !== `Bearer ${cronSecret}`) {
+  // ── 调试：列出所有包含 CRON / SECRET 的 env key（不打印值）──────────────────
+  const envKeys = Object.keys(process.env).filter(
+    (k) => k.includes("CRON") || k.includes("SECRET"),
+  );
+  console.log("[cron] env keys with CRON/SECRET:", envKeys);
+  console.log("[cron] CRON_SECRET set:", !!cronSecret);
+
+  // ── 接受两种认证方式：Bearer header 或 ?secret= 查询参数 ──────────────────
+  const authHeader = request.headers.get("authorization");
+  const querySecret = request.nextUrl.searchParams.get("secret");
+
+  const isAuthorized =
+    (cronSecret && authHeader === `Bearer ${cronSecret}`) ||
+    (cronSecret && querySecret === cronSecret);
+
+  console.log("[cron] auth via header:", authHeader === `Bearer ${cronSecret}`);
+  console.log("[cron] auth via query:", querySecret === cronSecret);
+
+  if (!isAuthorized) {
     return NextResponse.json(
-      { error: "未授权访问", debug: { headerReceived: authHeader, secretSet: !!cronSecret } },
+      {
+        error: "未授权访问",
+        debug: {
+          secretSet: !!cronSecret,
+          headerProvided: !!authHeader,
+          queryProvided: !!querySecret,
+          envKeysFound: envKeys,
+        },
+      },
       { status: 401 },
     );
   }
 
-  // 第二步：执行任务——给所有用户发情话邮件
+  // ── 执行任务：给所有用户发情话邮件 ──────────────────────────────────────────
   try {
     await sendDailyLoveLetterToAll();
     return NextResponse.json({
