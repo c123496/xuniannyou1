@@ -12,6 +12,7 @@ type GoogleSignInButtonProps = {
 export function GoogleSignInButton({ isConfigured }: GoogleSignInButtonProps) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
 
   if (!isConfigured) {
@@ -33,11 +34,15 @@ export function GoogleSignInButton({ isConfigured }: GoogleSignInButtonProps) {
 
   async function handleSubmit(formData: FormData) {
     setError(null);
+    if (!turnstileToken) {
+      setError("请先完成人机验证。");
+      return;
+    }
+    formData.set("cf-turnstile-response", turnstileToken);
     setPending(true);
     try {
       await googleSignInAction(formData);
     } catch (err) {
-      // next-auth redirect 会抛出特殊错误，不是真正的错误
       const message = err instanceof Error ? err.message : String(err);
       if (!message.includes("NEXT_REDIRECT")) {
         setError(message);
@@ -48,20 +53,20 @@ export function GoogleSignInButton({ isConfigured }: GoogleSignInButtonProps) {
 
   return (
     <form ref={formRef} action={handleSubmit} className="flex flex-col gap-3">
-      {/* Cloudflare Turnstile 人机验证组件 */}
       <Turnstile
-        siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ?? ""}
+        siteKey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY!}
+        onSuccess={(token) => {
+          setTurnstileToken(token);
+        }}
         options={{ theme: "light", size: "normal" }}
       />
 
-      {error && (
-        <p className="text-sm text-red-500">{error}</p>
-      )}
+      {error && <p className="text-sm text-red-500">{error}</p>}
 
       <button
-        className="inline-flex h-12 items-center justify-center rounded-full bg-[#C8553D] px-7 text-sm font-semibold text-white shadow-[0_16px_36px_rgba(200,85,61,0.28)] transition hover:bg-[#B94C37] disabled:opacity-60 disabled:cursor-not-allowed"
+        className="inline-flex h-12 items-center justify-center rounded-full bg-[#C8553D] px-7 text-sm font-semibold text-white shadow-[0_16px_36px_rgba(200,85,61,0.28)] transition hover:bg-[#B94C37] disabled:cursor-not-allowed disabled:opacity-60"
         type="submit"
-        disabled={pending}
+        disabled={pending || !turnstileToken}
       >
         {pending ? "正在跳转..." : "进入我的纸片人关系"}
       </button>
