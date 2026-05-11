@@ -1,17 +1,26 @@
 @import "tailwindcss";
 
+/* ── Design Tokens ─────────────────────────────────────────── */
 :root {
-  --background: #f3eadf;
-  --foreground: #241c18;
-  --brand: #c8553d;
-  --ink: #241c18;
-  --cream: #f3eadf;
+  --cream-0: #FDFAF5;
+  --cream-1: #F7F0E6;
+  --cream-2: #EDE2D2;
+  --ink-0: #1A1210;
+  --ink-1: #4A3830;
+  --ink-2: #7C6860;
+  --ink-3: #A89890;
+  --brand: #C8553D;
+  --brand-dark: #AB4230;
+  --gold: #A88858;
+  --border: #E2D0C0;
+  --border-light: #EDE0D0;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: Arial, "Microsoft YaHei", "PingFang SC", sans-serif;
+  --color-background: #F7F0E6;
+  --color-foreground: #1A1210;
+  --font-display: "Cormorant Garamond", Georgia, "Songti SC", serif;
+  --font-sans: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei UI", "Microsoft YaHei", system-ui, sans-serif;
   --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
 }
 
@@ -20,25 +29,72 @@
 }
 
 html {
-  background: var(--background);
+  background: #F7F0E6;
 }
 
 body {
   min-width: 320px;
   overflow-x: hidden;
+  font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei UI", "Microsoft YaHei", system-ui, sans-serif;
+  color: #1A1210;
   background:
-    radial-gradient(circle at 18% 8%, rgba(200, 85, 61, 0.12), transparent 30rem),
-    linear-gradient(180deg, #f7efe6 0%, #efe2d5 100%);
-  color: var(--foreground);
-  font-family: Arial, "Microsoft YaHei", "PingFang SC", sans-serif;
+    radial-gradient(ellipse 85% 55% at 8% -5%, rgba(200, 85, 61, 0.08) 0%, transparent 55%),
+    radial-gradient(ellipse 65% 50% at 95% 108%, rgba(168, 136, 88, 0.09) 0%, transparent 55%),
+    linear-gradient(165deg, #FAF5EE 0%, #F2E8D8 55%, #EBE0CC 100%);
+  position: relative;
 }
 
+/* Subtle paper grain texture */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0.022;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='250' height='250'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.78' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='250' height='250' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+}
+
+/* ── Typography ─────────────────────────────────────────────── */
 .editorial-wordmark {
-  font-family: Georgia, "Times New Roman", "Songti SC", serif;
+  font-family: "Cormorant Garamond", Georgia, "Songti SC", serif;
   font-style: italic;
-  letter-spacing: 0;
+  font-weight: 500;
+  letter-spacing: 0.01em;
 }
 
+/* ── Animations ─────────────────────────────────────────────── */
+@keyframes posterDrift {
+  0%   { transform: scale(1.02) translate3d(0, 0, 0); }
+  50%  { transform: scale(1.07) translate3d(-1.2%, -0.8%, 0); }
+  100% { transform: scale(1.02) translate3d(0, 0, 0); }
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes breatheDot {
+  0%, 100% { opacity: 0.25; transform: scale(0.6); }
+  50%       { opacity: 1;   transform: scale(1); }
+}
+
+.animate-fade-up {
+  animation: fadeUp 0.65s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.5s ease both;
+}
+
+/* ── Scrollbar ──────────────────────────────────────────────── */
 .scrollbar-hide {
   -ms-overflow-style: none;
   scrollbar-width: none;
@@ -46,20 +102,6 @@ body {
 
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
-}
-
-@keyframes posterDrift {
-  0% {
-    transform: scale(1.02) translate3d(0, 0, 0);
-  }
-
-  50% {
-    transform: scale(1.08) translate3d(-1.5%, -1%, 0);
-  }
-
-  100% {
-    transform: scale(1.02) translate3d(0, 0, 0);
-  }
 }
 
 /* ── Markdown 代码块样式 ──────────────────────────────────────────────────── */

@@ -32,8 +32,8 @@ function AssistantBubble({
   message: ChatMessage;
 }) {
   return (
-    <article className="flex max-w-[92%] items-start gap-3 sm:max-w-[78%]">
-      <div className="relative mt-1 hidden h-9 w-9 shrink-0 overflow-hidden rounded-full ring-1 ring-[#E5D4C7] sm:block">
+    <article className="flex max-w-[92%] items-start gap-3 sm:max-w-[76%]">
+      <div className="relative mt-1 hidden h-9 w-9 shrink-0 overflow-hidden rounded-full ring-1 ring-[#DDD0C0] sm:block">
         <Image
           alt={boyfriend.name}
           className="object-cover"
@@ -44,30 +44,30 @@ function AssistantBubble({
           unoptimized
         />
       </div>
-      <div className="rounded-[24px] rounded-tl-md border border-[#E8D7C9] bg-white/90 px-4 py-3 text-[#241C18] shadow-[0_14px_36px_rgba(70,48,39,0.08)] backdrop-blur sm:px-5 sm:py-4">
-        <p className="mb-2 text-xs font-semibold text-[#C8553D]">{boyfriend.name}</p>
+      <div className="rounded-[22px] rounded-tl-[6px] border border-[#E8D8C8] bg-white/92 px-4 py-3.5 text-[#1A1210] shadow-[0_10px_32px_rgba(60,40,30,0.08)] backdrop-blur sm:px-5 sm:py-4">
+        <p className="mb-2.5 text-[11px] font-medium tracking-wide text-[#C8553D]">{boyfriend.name}</p>
 
         {message.type === "image" ? (
           <figure className="space-y-3">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               alt={message.caption ?? "男友发来的图片"}
-              className="max-h-[460px] w-full rounded-[18px] object-cover"
+              className="max-h-[460px] w-full rounded-[16px] object-cover"
               src={message.imageUrl}
             />
             {message.caption ? (
-              <figcaption className="text-sm leading-7 text-[#4C3B35]">{message.caption}</figcaption>
+              <figcaption className="text-sm leading-7 text-[#4A3830]">{message.caption}</figcaption>
             ) : null}
           </figure>
         ) : message.type === "audio" ? (
           <div className="space-y-3">
-            <p className="text-sm leading-7 text-[#4C3B35]">{message.caption ?? "点开听"}</p>
+            <p className="text-sm leading-7 text-[#4A3830]">{message.caption ?? "点开听"}</p>
             <audio className="w-full max-w-[320px]" controls src={message.audioUrl}>
               你的浏览器暂时不能播放这条语音。
             </audio>
           </div>
         ) : (
-          <p className="whitespace-pre-wrap text-[15px] leading-8">{message.content}</p>
+          <p className="whitespace-pre-wrap text-[15px] leading-[1.85]">{message.content}</p>
         )}
       </div>
     </article>
@@ -76,17 +76,17 @@ function AssistantBubble({
 
 function UserBubble({ message }: { message: ChatMessage }) {
   return (
-    <article className="ml-auto max-w-[90%] rounded-[24px] rounded-tr-md bg-[#C8553D] px-4 py-3 text-white shadow-[0_16px_40px_rgba(200,85,61,0.22)] sm:max-w-[72%] sm:px-5 sm:py-4">
+    <article className="ml-auto max-w-[90%] rounded-[22px] rounded-tr-[6px] bg-[#C8553D] px-4 py-3.5 text-white shadow-[0_12px_36px_rgba(200,85,61,0.28)] sm:max-w-[70%] sm:px-5 sm:py-4">
       {message.type === "image" ? (
         <figure className="space-y-3">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             alt={message.caption ?? "发送的图片"}
-            className="max-h-[360px] w-full rounded-[18px] object-cover"
+            className="max-h-[360px] w-full rounded-[15px] object-cover"
             src={message.imageUrl}
           />
           {message.caption ? (
-            <figcaption className="text-sm leading-7 text-white/88">{message.caption}</figcaption>
+            <figcaption className="text-sm leading-7 text-white/85">{message.caption}</figcaption>
           ) : null}
         </figure>
       ) : message.type === "audio" ? (
@@ -97,7 +97,7 @@ function UserBubble({ message }: { message: ChatMessage }) {
           </audio>
         </div>
       ) : (
-        <p className="whitespace-pre-wrap text-[15px] leading-8">{message.content}</p>
+        <p className="whitespace-pre-wrap text-[15px] leading-[1.85]">{message.content}</p>
       )}
     </article>
   );
@@ -302,8 +302,8 @@ export function ChatPanel({ boyfriend }: { boyfriend: Boyfriend }) {
 
   return (
     <>
-      <section className="relative flex flex-1 flex-col gap-5 overflow-hidden py-6">
-        <div className="pointer-events-none absolute inset-0 -z-10 rounded-[32px] bg-[radial-gradient(circle_at_20%_10%,rgba(200,85,61,0.10),transparent_26rem),linear-gradient(180deg,rgba(255,255,255,0.38),rgba(255,255,255,0.08))]" />
+      <section className="relative flex flex-1 flex-col gap-4 overflow-hidden py-6">
+        <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_70%_40%_at_20%_8%,rgba(200,85,61,0.07),transparent),linear-gradient(180deg,rgba(255,255,255,0.32),rgba(255,255,255,0.06))]" />
 
         {messages.map((message) =>
           message.role === "user" ? (
@@ -314,16 +314,34 @@ export function ChatPanel({ boyfriend }: { boyfriend: Boyfriend }) {
         )}
 
         {isTyping ? (
-          <div className="flex max-w-[92%] items-center gap-3 rounded-[22px] rounded-tl-md border border-[#E8D7C9] bg-white/86 px-4 py-3 text-sm text-[#826C62] shadow-sm sm:max-w-[72%]">
-            <span className="h-2 w-2 animate-pulse rounded-full bg-[#C8553D]" />
-            {boyfriend.name} 正在认真读你的消息...
+          <div className="flex max-w-[80%] items-center gap-2.5 sm:max-w-[65%]">
+            <div className="relative mt-1 hidden h-8 w-8 shrink-0 overflow-hidden rounded-full ring-1 ring-[#DDD0C0] sm:block">
+              <Image
+                alt={boyfriend.name}
+                className="object-cover"
+                fill
+                sizes="32px"
+                src={boyfriend.avatarImageUrl}
+                style={{ objectPosition: boyfriend.imagePosition }}
+                unoptimized
+              />
+            </div>
+            <div className="flex items-center gap-1.5 rounded-[20px] rounded-tl-[5px] border border-[#E8D8C8] bg-white/92 px-5 py-3.5 shadow-sm backdrop-blur">
+              <span className="h-1.5 w-1.5 rounded-full bg-[#C8553D]" style={{ animation: "breatheDot 1.3s ease-in-out infinite", animationDelay: "0s" }} />
+              <span className="h-1.5 w-1.5 rounded-full bg-[#C8553D]" style={{ animation: "breatheDot 1.3s ease-in-out infinite", animationDelay: "0.22s" }} />
+              <span className="h-1.5 w-1.5 rounded-full bg-[#C8553D]" style={{ animation: "breatheDot 1.3s ease-in-out infinite", animationDelay: "0.44s" }} />
+            </div>
           </div>
         ) : null}
-        {error ? <p className="rounded-full bg-white/80 px-4 py-2 text-sm text-[#B94C37]">{error}</p> : null}
+        {error ? (
+          <p className="rounded-full border border-[#F5D0C8] bg-[#FEF4F2] px-4 py-2 text-sm text-[#B94C37]">
+            {error}
+          </p>
+        ) : null}
       </section>
 
       <form
-        className="sticky bottom-3 rounded-[28px] border border-white/70 bg-white/86 p-3 shadow-[0_20px_70px_rgba(70,48,39,0.16)] backdrop-blur-xl"
+        className="sticky bottom-3 rounded-[26px] border border-white/65 bg-white/88 p-3 shadow-[0_18px_60px_rgba(60,40,30,0.14)] backdrop-blur-xl"
         onSubmit={handleSubmit}
       >
         <label className="sr-only" htmlFor="message">
@@ -333,18 +351,18 @@ export function ChatPanel({ boyfriend }: { boyfriend: Boyfriend }) {
         {imageDataUrl || audioDataUrl ? (
           <div className="mb-3 flex flex-wrap gap-2">
             {imageDataUrl ? (
-              <div className="flex items-center gap-2 rounded-2xl border border-[#E5D4C7] bg-[#F8F1EA] p-2">
+              <div className="flex items-center gap-2 rounded-2xl border border-[#E2D0C0] bg-[#F7F0E6] p-2">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img alt="待发送图片" className="h-14 w-14 rounded-xl object-cover" src={imageDataUrl} />
-                <button className="text-xs text-[#8A7168]" onClick={() => setImageDataUrl(null)} type="button">
+                <button className="text-xs text-[#7C6860]" onClick={() => setImageDataUrl(null)} type="button">
                   移除
                 </button>
               </div>
             ) : null}
             {audioDataUrl ? (
-              <div className="flex items-center gap-2 rounded-2xl border border-[#E5D4C7] bg-[#F8F1EA] p-2">
+              <div className="flex items-center gap-2 rounded-2xl border border-[#E2D0C0] bg-[#F7F0E6] p-2">
                 <audio className="h-9 w-44" controls src={audioDataUrl} />
-                <button className="text-xs text-[#8A7168]" onClick={() => setAudioDataUrl(null)} type="button">
+                <button className="text-xs text-[#7C6860]" onClick={() => setAudioDataUrl(null)} type="button">
                   移除
                 </button>
               </div>
@@ -361,20 +379,24 @@ export function ChatPanel({ boyfriend }: { boyfriend: Boyfriend }) {
             type="file"
           />
           <label
-            className="flex h-12 cursor-pointer items-center justify-center rounded-full border border-[#E0CABC] bg-[#F8F1EA] px-4 text-sm font-semibold text-[#5F463E] transition hover:border-[#C8553D]/40"
+            className="flex h-11 cursor-pointer items-center justify-center rounded-full border border-[#DDD0C0] bg-[#F7F0E6] px-4 text-sm text-[#4A3830] transition hover:border-[#C8553D]/38 hover:text-[#C8553D]"
             htmlFor="image-upload"
           >
             图片
           </label>
           <button
-            className="h-12 rounded-full border border-[#E0CABC] bg-[#F8F1EA] px-4 text-sm font-semibold text-[#5F463E] transition hover:border-[#C8553D]/40"
+            className={`h-11 rounded-full border px-4 text-sm transition ${
+              isRecording
+                ? "border-[#C8553D]/40 bg-[#C8553D]/8 text-[#C8553D]"
+                : "border-[#DDD0C0] bg-[#F7F0E6] text-[#4A3830] hover:border-[#C8553D]/38 hover:text-[#C8553D]"
+            }`}
             onClick={toggleRecording}
             type="button"
           >
-            {isRecording ? "停止" : "语音"}
+            {isRecording ? "停止●" : "语音"}
           </button>
           <input
-            className="min-h-12 min-w-[180px] flex-1 rounded-full border border-[#E0CABC] bg-[#FFFDFC] px-5 text-base text-[#241C18] outline-none transition placeholder:text-[#AA948A] focus:border-[#C8553D]/70"
+            className="min-h-11 min-w-[180px] flex-1 rounded-full border border-[#DDD0C0] bg-[#FEFCFA] px-5 text-[15px] text-[#1A1210] outline-none transition placeholder:text-[#A89890] focus:border-[#C8553D]/60 focus:ring-1 focus:ring-[#C8553D]/15"
             id="message"
             inputMode="text"
             onChange={(event) => setInput(event.target.value)}
@@ -383,7 +405,7 @@ export function ChatPanel({ boyfriend }: { boyfriend: Boyfriend }) {
             value={input}
           />
           <button
-            className="h-12 rounded-full bg-[#C8553D] px-6 text-sm font-semibold text-white shadow-[0_14px_32px_rgba(200,85,61,0.28)] transition hover:bg-[#B94C37] disabled:bg-[#D9C6BA] disabled:text-[#8A7168] disabled:shadow-none"
+            className="h-11 rounded-full bg-[#C8553D] px-5 text-sm font-medium text-white shadow-[0_10px_28px_rgba(200,85,61,0.30)] transition hover:bg-[#AB4230] hover:shadow-[0_14px_36px_rgba(200,85,61,0.40)] disabled:bg-[#DDD0C0] disabled:text-[#A89890] disabled:shadow-none"
             disabled={isSending || (!input.trim() && !imageDataUrl && !audioDataUrl)}
             type="submit"
           >

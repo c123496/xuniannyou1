@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/love-letter",
       "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/cron/miss-you",
+      "schedule": "0 12 * * *"
     }
   ]
 }
