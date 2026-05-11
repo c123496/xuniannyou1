@@ -1,3 +1,4 @@
+import { nanoid } from "nanoid";
 import { NextResponse } from "next/server";
 
 import { auth } from "@/auth";
@@ -6,6 +7,7 @@ import { extractUserMemoriesFromConversation } from "@/lib/ai/memory-extractor";
 import { generateSpeechAudio } from "@/lib/ai/minimax";
 import { generateImage } from "@/lib/ai/seedream";
 import { getBoyfriendById } from "@/lib/boyfriends";
+import { uploadToR2 } from "@/lib/r2";
 import {
   splitAssistantTextMessages,
   toAudioMessage,
@@ -111,12 +113,26 @@ export async function POST(request: Request) {
   const imageMessages = (
     await Promise.allSettled(
       selfieCalls.map(async (selfieCall) => {
-        const imageUrl = await generateImage({
+        // 1. 生成临时图片链接
+        const tempImageUrl = await generateImage({
           prompt: buildSelfieImagePrompt({
             boyfriendName: boyfriend.name,
             scene: selfieCall.scene,
           }),
         });
+
+        // 2. 下载图片并上传到 R2，获取永久链接
+        let imageUrl = tempImageUrl;
+        try {
+          const imgRes = await fetch(tempImageUrl);
+          if (imgRes.ok) {
+            const buffer = Buffer.from(await imgRes.arrayBuffer());
+            const fileName = `selfies/${nanoid()}.png`;
+            imageUrl = await uploadToR2(buffer, fileName, "image/png");
+          }
+        } catch (uploadError) {
+          console.error("[R2] upload failed, falling back to temp URL:", uploadError);
+        }
 
         return toSelfieImageMessage({
           imageUrl,
