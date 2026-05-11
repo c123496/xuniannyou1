@@ -1,4 +1,6 @@
+import type { AffectionLevel } from "@/lib/db/user-affection";
 import { boyfriends } from "../boyfriends";
+import { getAffectionPrompt } from "./shared/affection";
 import { CHAT_EXPRESSION_RULES } from "./shared/chat-expression";
 import { SELFIE_RULES } from "./shared/selfie";
 import { VOICE_RULES } from "./shared/voice";
@@ -38,13 +40,20 @@ const characterBasePrompts: Record<string, string> = {
   ].join("\n"),
 };
 
-export function getCharacterSystemPrompt(boyfriendId: string) {
+export function getCharacterSystemPrompt(
+  boyfriendId: string,
+  affection?: { score: number; level: AffectionLevel },
+) {
   const boyfriend = boyfriends.find((item) => item.id === boyfriendId);
   const basePrompt = characterBasePrompts[boyfriendId];
 
   if (!boyfriend || !basePrompt) {
     throw new Error(`Unknown boyfriend prompt: ${boyfriendId}`);
   }
+
+  const affectionPrompt = affection
+    ? getAffectionPrompt(affection.score, affection.level)
+    : getAffectionPrompt(60, "warm");
 
   return [
     basePrompt,
@@ -53,6 +62,8 @@ export function getCharacterSystemPrompt(boyfriendId: string) {
     `定位：${boyfriend.positioning}`,
     `语气：${boyfriend.tone}`,
     "边界：保持 SFW，不主动推进性内容；优先使用用户正在使用的语言。",
+    "",
+    affectionPrompt,
     "",
     LONG_TERM_MEMORY_RULES,
     "",

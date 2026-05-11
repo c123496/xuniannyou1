@@ -1,4 +1,5 @@
 import type { Boyfriend } from "@/lib/boyfriends";
+import type { AffectionState } from "@/lib/db/user-affection";
 import { getCharacterSystemPrompt } from "../prompts/characters";
 
 const DEEPSEEK_MESSAGES_URL = "https://direct.evolink.ai/v1/messages";
@@ -167,16 +168,18 @@ export function buildDeepSeekRequestBody({
   boyfriend,
   memoryContext,
   userMessage,
+  affectionState,
 }: {
   boyfriend: Boyfriend;
   memoryContext?: string;
   userMessage: string;
+  affectionState?: AffectionState;
 }) {
   return {
     model: DEEPSEEK_MODEL,
     max_tokens: 1024,
     messages: buildDeepSeekMessages({
-      systemPrompt: getCharacterSystemPrompt(boyfriend.id),
+      systemPrompt: getCharacterSystemPrompt(boyfriend.id, affectionState),
       memoryContext,
       userMessage,
     }),
@@ -188,10 +191,12 @@ export async function generateBoyfriendReply({
   boyfriend,
   memoryContext,
   userMessage,
+  affectionState,
 }: {
   boyfriend: Boyfriend;
   memoryContext?: string;
   userMessage: string;
+  affectionState?: AffectionState;
 }) {
   const apiKey = process.env.DEEPSEEK_API_KEY;
 
@@ -205,7 +210,7 @@ export async function generateBoyfriendReply({
       Authorization: `Bearer ${apiKey}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify(buildDeepSeekRequestBody({ boyfriend, memoryContext, userMessage })),
+    body: JSON.stringify(buildDeepSeekRequestBody({ boyfriend, memoryContext, userMessage, affectionState })),
   });
 
   if (!response.ok) {
@@ -215,6 +220,7 @@ export async function generateBoyfriendReply({
 
   const data = (await response.json()) as DeepSeekResponse;
   const result = extractDeepSeekResult(data);
+
 
   if (!result.text && result.selfieCalls.length === 0 && result.voiceCalls.length === 0) {
     throw new Error("DeepSeek response did not include text or tool calls");

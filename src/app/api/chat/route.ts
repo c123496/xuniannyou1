@@ -2,6 +2,7 @@ import { nanoid } from "nanoid";
 import { NextResponse } from "next/server";
 
 import { auth } from "@/auth";
+import { scoreAffectionDelta } from "@/lib/ai/affection-scorer";
 import { generateBoyfriendReply } from "@/lib/ai/deepseek";
 import { extractUserMemoriesFromConversation } from "@/lib/ai/memory-extractor";
 import { generateSpeechAudio } from "@/lib/ai/minimax";
@@ -19,6 +20,7 @@ import {
 import { ensureSelfieForDirectRequest, isDirectSelfieRequest } from "@/lib/chat/selfie-intent";
 import { ensureVoiceForDirectRequest, isDirectVoiceRequest } from "@/lib/chat/voice-intent";
 import { saveChatMessages } from "@/lib/db/messages";
+import { getAffectionScore, updateAffectionScore } from "@/lib/db/user-affection";
 import { formatUserMemoriesForPrompt, getUserMemories, upsertUserMemories } from "@/lib/db/user-memories";
 
 function buildSelfieImagePrompt({
@@ -64,12 +66,23 @@ export async function POST(request: Request) {
 
   const userId = session.user.email ?? session.user.name ?? "unknown-user";
 
+  // 并行加载记忆和好感度
   let memoryContext = "";
-  try {
-    const memories = await getUserMemories({ userId, boyfriendId: boyfriend.id });
-    memoryContext = formatUserMemoriesForPrompt(memories);
-  } catch (error) {
-    console.warn("[memory] failed to load", error);
+  let affectionState: import("@/lib/db/user-affection").AffectionState = { score: 60, level: "warm" };
+
+  const [memoriesResult, affectionResult] = await Promise.allSettled([
+    getUserMemories({ userId, boyfriendId: boyfriend.id }),
+    getAffectionScore({ userId, boyfriendId: boyfriend.id }),
+  ]);
+
+  if (memoriesResult.status === "fulfilled") {
+    memoryContext = formatUserMemoriesForPrompt(memoriesResult.value);
+  } else {
+    console.warn("[memory] failed to load", memoriesResult.reason);
+  }
+
+  if (affectionResult.status === "fulfilled") {
+    affectionState = affectionResult.value;
   }
 
   const userPrompt = [
@@ -82,7 +95,7 @@ export async function POST(request: Request) {
 
   let result;
   try {
-    result = await generateBoyfriendReply({ boyfriend, userMessage: userPrompt, memoryContext });
+    result = await generateBoyfriendReply({ boyfriend, userMessage: userPrompt, memoryContext, affectionState });
   } catch (error) {
     console.error("DeepSeek request failed:", error);
     return NextResponse.json({ error: "LLM request failed" }, { status: 502 });
@@ -199,25 +212,33 @@ export async function POST(request: Request) {
     console.error("Failed to save chat messages:", error);
   }
 
-  try {
-    if (message) {
-      const extractedMemories = await extractUserMemoriesFromConversation({
+  // 并行执行：记忆提取 + 好感度更新（不阻塞响应）
+  if (message) {
+    Promise.allSettled([
+      // 记忆提取
+      extractUserMemoriesFromConversation({
         userMessage: message,
         assistantText: assistantTextForMemory,
         boyfriendId: boyfriend.id,
         boyfriendName: boyfriend.name,
-      });
+      }).then(async (extractedMemories) => {
+        if (extractedMemories.length > 0) {
+          await upsertUserMemories({ userId, boyfriendId: boyfriend.id, memories: extractedMemories });
+        }
+      }),
 
-      if (extractedMemories.length > 0) {
-        await upsertUserMemories({
-          userId,
-          boyfriendId: boyfriend.id,
-          memories: extractedMemories,
-        });
-      }
-    }
-  } catch (error) {
-    console.warn("[memory] failed", error);
+      // 好感度评分 + 更新
+      scoreAffectionDelta({ userMessage: message, assistantText: assistantTextForMemory })
+        .then((delta) => {
+          console.log(`[affection] ${userId} ← ${boyfriend.id}: delta=${delta}, before=${affectionState.score}`);
+          return updateAffectionScore({ userId, boyfriendId: boyfriend.id, delta });
+        })
+        .then(({ score, level }) => {
+          console.log(`[affection] after=${score} (${level})`);
+        }),
+    ]).catch(() => {
+      // 静默，不影响主流程
+    });
   }
 
   return NextResponse.json({
