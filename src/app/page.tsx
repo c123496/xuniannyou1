@@ -95,6 +95,9 @@ export default async function LandingPage() {
               <Link href="/terms" className="transition hover:text-[#C8553D]">Terms of Service</Link>
               <Link href="/privacy" className="transition hover:text-[#C8553D]">Privacy Policy</Link>
               <a href="mailto:support@dearmate.mom" className="transition hover:text-[#C8553D]">Contact</a>
+              <a href="https://discord.gg/h6xyDQuzT" target="_blank" rel="noopener noreferrer" className="transition hover:text-[#5865F2]">
+                Discord 💬
+              </a>
             </nav>
           </div>
         </footer>

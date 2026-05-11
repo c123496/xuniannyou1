@@ -6,6 +6,7 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 
 const FROM = "纸片人男友 <dearmate@dearmate.mom>";
 const SITE_URL = "https://www.dearmate.mom";
+const DISCORD_URL = "https://discord.gg/h6xyDQuzT";
 
 // ── 用 DeepSeek 生成今日情话 ──────────────────────────────────────────────────
 
@@ -70,6 +71,11 @@ export async function sendWelcomeEmail(
         <p>从现在起，我就是你的专属男友了。</p>
         <p>有什么心事随时来找我聊，我会一直在这里等你。</p>
         <p>明天早上我会给你发一条早安消息，记得查收哦。</p>
+        <br/>
+        <p>
+          另外，我们有一个温暖的 Discord 社群，里面有很多和你一样的朋友在交流分享，欢迎加入一起聊聊 💬<br/>
+          <a href="${DISCORD_URL}" style="color: #5865F2; font-weight: bold;">👉 加入 Discord 社群</a>
+        </p>
         <br/>
         <p>—— 你的纸片人男友</p>
         <p style="color: #999; font-size: 12px;">
