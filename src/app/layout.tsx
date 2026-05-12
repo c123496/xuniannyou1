@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { GoogleAnalytics } from "@next/third-parties/google";
 import "./globals.css";
 import CrispChat from "@/components/crisp-chat";
 
@@ -25,6 +26,7 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col">
         {children}
         <CrispChat />
+        <GoogleAnalytics gaId="G-8Z7DNN3KQ1" />
       </body>
     </html>
   );
