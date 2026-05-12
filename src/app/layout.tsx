@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import { GoogleAnalytics } from "@next/third-parties/google";
 import "./globals.css";
 import CrispChat from "@/components/crisp-chat";
@@ -27,6 +28,13 @@ export default function RootLayout({
         {children}
         <CrispChat />
         <GoogleAnalytics gaId="G-8Z7DNN3KQ1" />
+        <Script
+          src="https://plausible.io/js/pa-AAS2hef9AL2c90ZVxYGuk.js"
+          strategy="afterInteractive"
+        />
+        <Script id="plausible-init" strategy="afterInteractive">
+          {`window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};plausible.init()`}
+        </Script>
       </body>
     </html>
   );
