@@ -24,6 +24,11 @@ export default function RootLayout({
         />
         {/* eslint-disable-next-line @next/next/no-sync-scripts */}
         <script src="https://plausible.io/js/pa-c8-6mAkcTc8_HTjNX_Hjh.js" defer />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(c,l,a,r,i,t,y){c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);})(window, document, "clarity", "script", "wpx4yaw5kf");`,
+          }}
+        />
       </head>
       <body className="min-h-full flex flex-col">
         {/* Plausible init —— Plausible 验证爬虫会搜索 "plausible.init" 字符串 */}
