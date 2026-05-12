@@ -23,7 +23,7 @@ export default function RootLayout({
           rel="stylesheet"
         />
         {/* eslint-disable-next-line @next/next/no-sync-scripts */}
-        <script src="https://plausible.io/js/pa-AAS2hef9AL2c90ZVxYGuk.js" defer />
+        <script src="https://plausible.io/js/pa-wg47tDiuENa7QxyElhidi.js" defer />
       </head>
       <body className="min-h-full flex flex-col">
         {/* Plausible init —— Plausible 验证爬虫会搜索 "plausible.init" 字符串 */}
