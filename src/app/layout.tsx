@@ -26,6 +26,12 @@ export default function RootLayout({
         <script src="https://plausible.io/js/pa-AAS2hef9AL2c90ZVxYGuk.js" defer />
       </head>
       <body className="min-h-full flex flex-col">
+        {/* Plausible init —— Plausible 验证爬虫会搜索 "plausible.init" 字符串 */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `window.plausible=window.plausible||function(){(plausible.q=plausible.q||[]).push(arguments)},plausible.init=plausible.init||function(i){plausible.o=i||{}};plausible.init()`,
+          }}
+        />
         {children}
         <CrispChat />
         <GoogleAnalytics gaId="G-8Z7DNN3KQ1" />
